@@ -1,0 +1,511 @@
+{
+  "info": {
+    "name": "Apartment Management API",
+    "description": "Complete API collection for the Apartment Management System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080/api/v1" },
+    { "key": "accessToken", "value": "" },
+    { "key": "refreshToken", "value": "" },
+    { "key": "buildingId", "value": "" },
+    { "key": "unitId", "value": "" },
+    { "key": "planId", "value": "" },
+    { "key": "postId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{accessToken}}" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\",\n  \"full_name\": \"John Doe\",\n  \"phone\": \"+905551234567\"\n}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('accessToken', jsonData.data.access_token);",
+                "  pm.collectionVariables.set('refreshToken', jsonData.data.refresh_token);",
+                "}"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/login",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('accessToken', jsonData.data.access_token);",
+                "  pm.collectionVariables.set('refreshToken', jsonData.data.refresh_token);",
+                "}"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "Refresh Token",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/refresh",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/logout",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/auth/me"
+          }
+        },
+        {
+          "name": "Update Profile",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/auth/me",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"John Updated\",\n  \"phone\": \"+905559876543\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Buildings",
+      "item": [
+        {
+          "name": "Create Building",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Sunset Apartments\",\n  \"address\": \"123 Main St\",\n  \"city\": \"Istanbul\",\n  \"total_units\": 24,\n  \"latitude\": 41.0082,\n  \"longitude\": 28.9784\n}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('buildingId', jsonData.data.id);",
+                "}"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "Get Building",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}"
+          }
+        },
+        {
+          "name": "Get Dashboard",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/dashboard"
+          }
+        },
+        {
+          "name": "Get Units",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/units"
+          }
+        },
+        {
+          "name": "Create Unit",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/units",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"block\": \"A\",\n  \"floor\": 3,\n  \"unit_number\": \"A-301\",\n  \"area_sqm\": 120.5\n}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('unitId', jsonData.data.id);",
+                "}"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "Update Unit",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/units/{{unitId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"occupied\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Residents",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/residents"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Financial",
+      "item": [
+        {
+          "name": "Get Dues Plans",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/dues"
+          }
+        },
+        {
+          "name": "Create Dues Plan",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/dues",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"March 2024 Dues\",\n  \"amount\": 500.00,\n  \"period_month\": 3,\n  \"period_year\": 2024,\n  \"due_date\": \"2024-03-15\"\n}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('planId', jsonData.data.id);",
+                "}"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "Pay Dues",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/dues/{{planId}}/pay",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unit_id\": \"{{unitId}}\",\n  \"paid_amount\": 500.00,\n  \"notes\": \"Paid via bank transfer\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Dues Report",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/dues/report?month=3&year=2024"
+          }
+        },
+        {
+          "name": "Get Expenses",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/expenses?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Create Expense",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/expenses",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"Elevator Maintenance\",\n  \"amount\": 1200.00,\n  \"description\": \"Monthly elevator service\",\n  \"date\": \"2024-03-10\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Maintenance",
+      "item": [
+        {
+          "name": "Get Requests",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/maintenance?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Create Request",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/maintenance",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"unit_id\": \"{{unitId}}\",\n  \"title\": \"Water leak in bathroom\",\n  \"description\": \"There is a water leak under the sink\",\n  \"priority\": \"high\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update Request",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/maintenance/{{reqId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"in_progress\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Vendors",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/vendors"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Notifications",
+      "item": [
+        {
+          "name": "Get Notifications",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/notifications?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Mark as Read",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/notifications/{{notifId}}/read"
+          }
+        },
+        {
+          "name": "Send Announcement",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/announcements",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Building Meeting\",\n  \"body\": \"General assembly meeting on Saturday at 3PM\",\n  \"type\": \"announcement\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Preferences",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/notifications/preferences"
+          }
+        },
+        {
+          "name": "Update Preferences",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/notifications/preferences",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"maintenance\",\n  \"push_enabled\": true,\n  \"email_enabled\": false\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Forum",
+      "item": [
+        {
+          "name": "Get Categories",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/forum/categories"
+          }
+        },
+        {
+          "name": "Get Posts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/forum/posts?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/forum/posts",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category_id\": \"{{categoryId}}\",\n  \"title\": \"Parking spot allocation\",\n  \"body\": \"Can we discuss the new parking rules?\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Post Detail",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/forum/posts/{{postId}}"
+          }
+        },
+        {
+          "name": "Add Comment",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/forum/posts/{{postId}}/comments",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"I agree with this proposal!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Vote",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/forum/posts/{{postId}}/vote",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": 1\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Timeline",
+      "item": [
+        {
+          "name": "Get Feed",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/timeline?page=1&limit=20"
+          }
+        },
+        {
+          "name": "Create Post",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/timeline",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Beautiful sunset from our balcony!\",\n  \"type\": \"text\",\n  \"visibility\": \"building\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Create Poll",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/timeline",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Should we repaint the lobby?\",\n  \"type\": \"poll\",\n  \"visibility\": \"building\",\n  \"poll\": {\n    \"question\": \"What color should we paint the lobby?\",\n    \"options\": [\"Cream White\", \"Light Blue\", \"Warm Beige\", \"Keep Current\"]\n  }\n}"
+            }
+          }
+        },
+        {
+          "name": "Like Post",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/timeline/{{postId}}/like"
+          }
+        },
+        {
+          "name": "Add Comment",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/timeline/{{postId}}/comments",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"What a great view!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Vote Poll",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/timeline/polls/{{pollId}}/vote",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"option_id\": \"{{optionId}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Get Nearby Posts",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/timeline/nearby?lat=41.0082&lng=28.9784&radius=5"
+          }
+        }
+      ]
+    }
+  ]
+}
