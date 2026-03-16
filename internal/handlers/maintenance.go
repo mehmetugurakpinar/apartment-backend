@@ -11,10 +11,15 @@ import (
 
 type MaintenanceHandler struct {
 	maintenanceRepo *repository.MaintenanceRepository
+	buildingRepo    *repository.BuildingRepository
 }
 
-func NewMaintenanceHandler(maintenanceRepo *repository.MaintenanceRepository) *MaintenanceHandler {
-	return &MaintenanceHandler{maintenanceRepo: maintenanceRepo}
+func NewMaintenanceHandler(maintenanceRepo *repository.MaintenanceRepository, buildingRepo ...*repository.BuildingRepository) *MaintenanceHandler {
+	h := &MaintenanceHandler{maintenanceRepo: maintenanceRepo}
+	if len(buildingRepo) > 0 {
+		h.buildingRepo = buildingRepo[0]
+	}
+	return h
 }
 
 func (h *MaintenanceHandler) GetRequests(c *fiber.Ctx) error {
@@ -27,12 +32,83 @@ func (h *MaintenanceHandler) GetRequests(c *fiber.Ctx) error {
 	c.QueryParser(&pq)
 	pq.SetDefaults()
 
-	requests, total, err := h.maintenanceRepo.GetByBuilding(c.Context(), buildingID, pq.Page, pq.Limit)
+	userID := middleware.GetUserID(c)
+
+	// Managers see all requests (including pending_approval).
+	// Residents see approved requests + their own pending_approval requests.
+	isManager := false
+	if h.buildingRepo != nil {
+		role, err := h.buildingRepo.GetMemberRole(c.Context(), buildingID, userID)
+		if err == nil && (role == models.RoleSuperAdmin || role == models.RoleBuildingManager) {
+			isManager = true
+		}
+	}
+
+	var requests []models.MaintenanceRequestDetail
+	var total int64
+
+	if isManager {
+		requests, total, err = h.maintenanceRepo.GetByBuilding(c.Context(), buildingID, pq.Page, pq.Limit)
+	} else {
+		requests, total, err = h.maintenanceRepo.GetByBuildingForResident(c.Context(), buildingID, userID, pq.Page, pq.Limit)
+	}
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.ErrorResponse(err.Error()))
 	}
 
 	return c.JSON(models.SuccessResponse(models.NewPaginatedResponse(requests, pq.Page, pq.Limit, total), ""))
+}
+
+func (h *MaintenanceHandler) ApproveRequest(c *fiber.Ctx) error {
+	reqID, err := uuid.Parse(c.Params("reqId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Invalid request ID"))
+	}
+
+	existing, err := h.maintenanceRepo.GetByID(c.Context(), reqID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(models.ErrorResponse("Request not found"))
+	}
+
+	if existing.Status != models.MaintenancePendingApproval {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Only pending requests can be approved"))
+	}
+
+	newStatus := models.MaintenanceOpen
+	if err := h.maintenanceRepo.Update(c.Context(), reqID, &models.UpdateMaintenanceRequest{
+		Status: &newStatus,
+	}); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.ErrorResponse(err.Error()))
+	}
+
+	updated, _ := h.maintenanceRepo.GetByID(c.Context(), reqID)
+	return c.JSON(models.SuccessResponse(updated, "Request approved"))
+}
+
+func (h *MaintenanceHandler) RejectRequest(c *fiber.Ctx) error {
+	reqID, err := uuid.Parse(c.Params("reqId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Invalid request ID"))
+	}
+
+	existing, err := h.maintenanceRepo.GetByID(c.Context(), reqID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(models.ErrorResponse("Request not found"))
+	}
+
+	if existing.Status != models.MaintenancePendingApproval {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Only pending requests can be rejected"))
+	}
+
+	newStatus := models.MaintenanceClosed
+	if err := h.maintenanceRepo.Update(c.Context(), reqID, &models.UpdateMaintenanceRequest{
+		Status: &newStatus,
+	}); err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.ErrorResponse(err.Error()))
+	}
+
+	updated, _ := h.maintenanceRepo.GetByID(c.Context(), reqID)
+	return c.JSON(models.SuccessResponse(updated, "Request rejected"))
 }
 
 func (h *MaintenanceHandler) CreateRequest(c *fiber.Ctx) error {
@@ -51,11 +127,24 @@ func (h *MaintenanceHandler) CreateRequest(c *fiber.Ctx) error {
 	}
 
 	userID := middleware.GetUserID(c)
+
+	// Determine initial status based on user role:
+	// Managers/admins → open (auto-approved)
+	// Residents/others → pending_approval (needs manager approval)
+	initialStatus := models.MaintenancePendingApproval
+	if h.buildingRepo != nil {
+		role, err := h.buildingRepo.GetMemberRole(c.Context(), buildingID, userID)
+		if err == nil && (role == models.RoleSuperAdmin || role == models.RoleBuildingManager) {
+			initialStatus = models.MaintenanceOpen
+		}
+	}
+
 	mReq := &models.MaintenanceRequest{
 		BuildingID:  buildingID,
 		Title:       req.Title,
 		Description: req.Description,
 		Priority:    req.Priority,
+		Status:      initialStatus,
 		CreatedBy:   userID,
 	}
 
@@ -70,7 +159,12 @@ func (h *MaintenanceHandler) CreateRequest(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(models.ErrorResponse(err.Error()))
 	}
 
-	return c.Status(fiber.StatusCreated).JSON(models.SuccessResponse(mReq, "Maintenance request created"))
+	msg := "Maintenance request created"
+	if initialStatus == models.MaintenancePendingApproval {
+		msg = "Maintenance request submitted for approval"
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(models.SuccessResponse(mReq, msg))
 }
 
 func (h *MaintenanceHandler) UpdateRequest(c *fiber.Ctx) error {

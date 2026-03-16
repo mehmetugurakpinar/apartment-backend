@@ -22,13 +22,13 @@ func NewMaintenanceRepository(pool *pgxpool.Pool) *MaintenanceRepository {
 
 func (r *MaintenanceRepository) Create(ctx context.Context, req *models.MaintenanceRequest) error {
 	query := `
-		INSERT INTO maintenance_requests (building_id, unit_id, title, description, priority, created_by)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id, status, created_at, updated_at`
+		INSERT INTO maintenance_requests (building_id, unit_id, title, description, priority, status, created_by)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		RETURNING id, created_at, updated_at`
 
 	return r.pool.QueryRow(ctx, query,
-		req.BuildingID, req.UnitID, req.Title, req.Description, req.Priority, req.CreatedBy,
-	).Scan(&req.ID, &req.Status, &req.CreatedAt, &req.UpdatedAt)
+		req.BuildingID, req.UnitID, req.Title, req.Description, req.Priority, req.Status, req.CreatedBy,
+	).Scan(&req.ID, &req.CreatedAt, &req.UpdatedAt)
 }
 
 func (r *MaintenanceRepository) GetByBuilding(ctx context.Context, buildingID uuid.UUID, page, limit int) ([]models.MaintenanceRequestDetail, int64, error) {
@@ -61,7 +61,58 @@ func (r *MaintenanceRepository) GetByBuilding(ctx context.Context, buildingID uu
 	}
 	defer rows.Close()
 
-	var requests []models.MaintenanceRequestDetail
+	requests := make([]models.MaintenanceRequestDetail, 0)
+	for rows.Next() {
+		var d models.MaintenanceRequestDetail
+		if err := rows.Scan(
+			&d.ID, &d.BuildingID, &d.UnitID, &d.Title, &d.Description,
+			&d.Priority, &d.Status, &d.AssignedTo, &d.CreatedBy,
+			&d.CreatedAt, &d.UpdatedAt, &d.ResolvedAt,
+			&d.CreatedByName, &d.AssignedToName, &d.UnitNumber,
+		); err != nil {
+			return nil, 0, err
+		}
+		requests = append(requests, d)
+	}
+	return requests, total, nil
+}
+
+// GetByBuildingForResident returns approved (non-pending) requests + the resident's own pending requests
+func (r *MaintenanceRepository) GetByBuildingForResident(ctx context.Context, buildingID, userID uuid.UUID, page, limit int) ([]models.MaintenanceRequestDetail, int64, error) {
+	var total int64
+	err := r.pool.QueryRow(ctx,
+		`SELECT COUNT(*) FROM maintenance_requests WHERE building_id = $1 AND (status != 'pending_approval' OR created_by = $2)`,
+		buildingID, userID,
+	).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	query := `
+		SELECT mr.id, mr.building_id, mr.unit_id, mr.title, mr.description, mr.priority,
+			mr.status, mr.assigned_to, mr.created_by, mr.created_at, mr.updated_at, mr.resolved_at,
+			u_creator.full_name as created_by_name,
+			u_assigned.full_name as assigned_to_name,
+			unit.unit_number
+		FROM maintenance_requests mr
+		JOIN users u_creator ON mr.created_by = u_creator.id
+		LEFT JOIN users u_assigned ON mr.assigned_to = u_assigned.id
+		LEFT JOIN units unit ON mr.unit_id = unit.id
+		WHERE mr.building_id = $1
+			AND (mr.status != 'pending_approval' OR mr.created_by = $2)
+		ORDER BY
+			CASE mr.priority WHEN 'emergency' THEN 0 WHEN 'high' THEN 1 WHEN 'normal' THEN 2 ELSE 3 END,
+			mr.created_at DESC
+		LIMIT $3 OFFSET $4`
+
+	offset := (page - 1) * limit
+	rows, err := r.pool.Query(ctx, query, buildingID, userID, limit, offset)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer rows.Close()
+
+	requests := make([]models.MaintenanceRequestDetail, 0)
 	for rows.Next() {
 		var d models.MaintenanceRequestDetail
 		if err := rows.Scan(
@@ -131,13 +182,15 @@ func (r *MaintenanceRepository) Update(ctx context.Context, id uuid.UUID, req *m
 
 	query := `
 		UPDATE maintenance_requests SET
-			status = COALESCE($2, status),
-			priority = COALESCE($3, priority),
-			assigned_to = COALESCE($4, assigned_to),
-			resolved_at = COALESCE($5, resolved_at)
+			title = COALESCE($2, title),
+			description = COALESCE($3, description),
+			status = COALESCE($4, status),
+			priority = COALESCE($5, priority),
+			assigned_to = COALESCE($6, assigned_to),
+			resolved_at = COALESCE($7, resolved_at)
 		WHERE id = $1`
 
-	_, err := r.pool.Exec(ctx, query, id, req.Status, req.Priority, assignedTo, resolvedAt)
+	_, err := r.pool.Exec(ctx, query, id, req.Title, req.Description, req.Status, req.Priority, assignedTo, resolvedAt)
 	return err
 }
 

@@ -18,7 +18,7 @@ import (
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/cors"
 	"github.com/gofiber/fiber/v2/middleware/recover"
-	"github.com/googl
+	"github.com/google/uuid"
 	"go.uber.org/zap"
 )
 
@@ -71,7 +71,7 @@ func main() {
 	authHandler := handlers.NewAuthHandler(authService, userRepo)
 	buildingHandler := handlers.NewBuildingHandler(buildingRepo, userRepo)
 	duesHandler := handlers.NewDuesHandler(financialRepo)
-	maintenanceHandler := handlers.NewMaintenanceHandler(maintenanceRepo)
+	maintenanceHandler := handlers.NewMaintenanceHandler(maintenanceRepo, buildingRepo)
 	notifHandler := handlers.NewNotificationHandler(notifRepo)
 	forumHandler := handlers.NewForumHandler(forumRepo, buildingRepo)
 	timelineHandler := handlers.NewTimelineHandler(timelineRepo, userRepo, socialRepo)
@@ -172,9 +172,11 @@ func main() {
 	buildings.Patch("/:id/expenses/:expenseId", managerOnly, duesHandler.UpdateExpense)
 	buildings.Delete("/:id/expenses/:expenseId", managerOnly, duesHandler.DeleteExpense)
 
-	// Maintenance (read: all; create: all; update/delete: manager only)
+	// Maintenance (read: all; create: all; approve/update/delete: manager only)
 	buildings.Get("/:id/maintenance", maintenanceHandler.GetRequests)
 	buildings.Post("/:id/maintenance", maintenanceHandler.CreateRequest)
+	buildings.Post("/:id/maintenance/:reqId/approve", managerOnly, maintenanceHandler.ApproveRequest)
+	buildings.Post("/:id/maintenance/:reqId/reject", managerOnly, maintenanceHandler.RejectRequest)
 	buildings.Patch("/:id/maintenance/:reqId", managerOnly, maintenanceHandler.UpdateRequest)
 	buildings.Delete("/:id/maintenance/:reqId", managerOnly, maintenanceHandler.DeleteRequest)
 

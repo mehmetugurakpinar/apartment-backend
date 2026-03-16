@@ -271,6 +271,14 @@ func (h *BuildingHandler) InviteUser(c *fiber.Ctx) error {
 		req.Role = models.RoleResident
 	}
 
+	// Enforce single manager per building
+	if req.Role == models.RoleBuildingManager {
+		hasManager, _ := h.buildingRepo.HasManager(c.Context(), buildingID)
+		if hasManager {
+			return c.Status(fiber.StatusConflict).JSON(models.ErrorResponse("This building already has a manager. A building can only have one manager."))
+		}
+	}
+
 	userID := middleware.GetUserID(c)
 
 	invitation := &models.BuildingInvitation{

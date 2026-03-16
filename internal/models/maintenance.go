@@ -18,10 +18,11 @@ const (
 type MaintenanceRequestStatus string
 
 const (
-	MaintenanceOpen       MaintenanceRequestStatus = "open"
-	MaintenanceInProgress MaintenanceRequestStatus = "in_progress"
-	MaintenanceResolved   MaintenanceRequestStatus = "resolved"
-	MaintenanceClosed     MaintenanceRequestStatus = "closed"
+	MaintenancePendingApproval MaintenanceRequestStatus = "pending_approval"
+	MaintenanceOpen            MaintenanceRequestStatus = "open"
+	MaintenanceInProgress      MaintenanceRequestStatus = "in_progress"
+	MaintenanceResolved        MaintenanceRequestStatus = "resolved"
+	MaintenanceClosed          MaintenanceRequestStatus = "closed"
 )
 
 type MaintenanceRequest struct {
@@ -67,9 +68,11 @@ type CreateMaintenanceRequest struct {
 }
 
 type UpdateMaintenanceRequest struct {
-	Status     *MaintenanceRequestStatus `json:"status,omitempty"`
-	Priority   *MaintenancePriority      `json:"priority,omitempty"`
-	AssignedTo *string                   `json:"assigned_to,omitempty"`
+	Title       *string                   `json:"title,omitempty"`
+	Description *string                   `json:"description,omitempty"`
+	Status      *MaintenanceRequestStatus `json:"status,omitempty"`
+	Priority    *MaintenancePriority      `json:"priority,omitempty"`
+	AssignedTo  *string                   `json:"assigned_to,omitempty"`
 }
 
 type CreateVendorRequest struct {

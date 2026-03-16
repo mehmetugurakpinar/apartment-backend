@@ -11,7 +11,15 @@
     { "key": "buildingId", "value": "" },
     { "key": "unitId", "value": "" },
     { "key": "planId", "value": "" },
-    { "key": "postId", "value": "" }
+    { "key": "reqId", "value": "" },
+    { "key": "vendorId", "value": "" },
+    { "key": "expenseId", "value": "" },
+    { "key": "postId", "value": "" },
+    { "key": "categoryId", "value": "" },
+    { "key": "pollId", "value": "" },
+    { "key": "optionId", "value": "" },
+    { "key": "notifId", "value": "" },
+    { "key": "userId", "value": "" }
   ],
   "auth": {
     "type": "bearer",
@@ -79,7 +87,19 @@
               "mode": "raw",
               "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
             }
-          }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('accessToken', jsonData.data.access_token);",
+                "  pm.collectionVariables.set('refreshToken', jsonData.data.refresh_token);",
+                "}"
+              ]
+            }
+          }]
         },
         {
           "name": "Logout",
@@ -90,6 +110,18 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"refresh_token\": \"{{refreshToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Accept Invitation",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/auth/accept-invitation",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"invitation-token-here\"\n}"
             }
           }
         },
@@ -109,6 +141,18 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"full_name\": \"John Updated\",\n  \"phone\": \"+905559876543\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/auth/password",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"current_password\": \"password123\",\n  \"new_password\": \"newPassword456\"\n}"
             }
           }
         }
@@ -141,6 +185,13 @@
           }]
         },
         {
+          "name": "Get User Buildings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings"
+          }
+        },
+        {
           "name": "Get Building",
           "request": {
             "method": "GET",
@@ -153,7 +204,12 @@
             "method": "GET",
             "url": "{{baseUrl}}/buildings/{{buildingId}}/dashboard"
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Units",
+      "item": [
         {
           "name": "Get Units",
           "request": {
@@ -197,6 +253,13 @@
           }
         },
         {
+          "name": "Delete Unit",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/units/{{unitId}}"
+          }
+        },
+        {
           "name": "Get Residents",
           "request": {
             "method": "GET",
@@ -206,7 +269,45 @@
       ]
     },
     {
-      "name": "Financial",
+      "name": "Members & Invitations",
+      "item": [
+        {
+          "name": "Get Members",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/members"
+          }
+        },
+        {
+          "name": "Remove Member",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/members/{{userId}}"
+          }
+        },
+        {
+          "name": "Get Invitations",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/invitations"
+          }
+        },
+        {
+          "name": "Invite User",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/invitations",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"resident@example.com\",\n  \"role\": \"resident\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Financial - Dues",
       "item": [
         {
           "name": "Get Dues Plans",
@@ -223,7 +324,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"title\": \"March 2024 Dues\",\n  \"amount\": 500.00,\n  \"period_month\": 3,\n  \"period_year\": 2024,\n  \"due_date\": \"2024-03-15\"\n}"
+              "raw": "{\n  \"title\": \"March 2026 Dues\",\n  \"amount\": 500.00,\n  \"period_month\": 3,\n  \"period_year\": 2026,\n  \"due_date\": \"2026-03-15\"\n}"
             }
           },
           "event": [{
@@ -239,7 +340,26 @@
           }]
         },
         {
-          "name": "Pay Dues",
+          "name": "Update Dues Plan",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/dues/{{planId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"March 2026 Dues (Updated)\",\n  \"amount\": 600.00,\n  \"period_month\": 3,\n  \"period_year\": 2026,\n  \"due_date\": \"2026-03-20\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Dues Plan",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/dues/{{planId}}"
+          }
+        },
+        {
+          "name": "Pay Dues (Record Payment)",
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/buildings/{{buildingId}}/dues/{{planId}}/pay",
@@ -254,14 +374,36 @@
           "name": "Get Dues Report",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/buildings/{{buildingId}}/dues/report?month=3&year=2024"
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/dues/report",
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}/dues/report?month=3&year=2026",
+              "host": ["{{baseUrl}}"],
+              "path": ["buildings", "{{buildingId}}", "dues", "report"],
+              "query": [
+                { "key": "month", "value": "3" },
+                { "key": "year", "value": "2026" }
+              ]
+            }
           }
-        },
+        }
+      ]
+    },
+    {
+      "name": "Financial - Expenses",
+      "item": [
         {
           "name": "Get Expenses",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/buildings/{{buildingId}}/expenses?page=1&limit=20"
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}/expenses?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["buildings", "{{buildingId}}", "expenses"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
           }
         },
         {
@@ -272,8 +414,38 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"category\": \"Elevator Maintenance\",\n  \"amount\": 1200.00,\n  \"description\": \"Monthly elevator service\",\n  \"date\": \"2024-03-10\"\n}"
+              "raw": "{\n  \"category\": \"Elevator Maintenance\",\n  \"amount\": 1200.00,\n  \"description\": \"Monthly elevator service\",\n  \"date\": \"2026-03-10\"\n}"
             }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('expenseId', jsonData.data.id);",
+                "}"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "Update Expense",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/expenses/{{expenseId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"category\": \"Elevator Maintenance\",\n  \"amount\": 1500.00,\n  \"description\": \"Monthly elevator service - updated\",\n  \"date\": \"2026-03-12\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Expense",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/expenses/{{expenseId}}"
           }
         }
       ]
@@ -285,7 +457,15 @@
           "name": "Get Requests",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/buildings/{{buildingId}}/maintenance?page=1&limit=20"
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}/maintenance?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["buildings", "{{buildingId}}", "maintenance"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
           }
         },
         {
@@ -298,25 +478,104 @@
               "mode": "raw",
               "raw": "{\n  \"unit_id\": \"{{unitId}}\",\n  \"title\": \"Water leak in bathroom\",\n  \"description\": \"There is a water leak under the sink\",\n  \"priority\": \"high\"\n}"
             }
-          }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('reqId', jsonData.data.id);",
+                "}"
+              ]
+            }
+          }]
         },
         {
-          "name": "Update Request",
+          "name": "Update Request (Edit title/description/priority/status)",
           "request": {
             "method": "PATCH",
             "url": "{{baseUrl}}/buildings/{{buildingId}}/maintenance/{{reqId}}",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"status\": \"in_progress\"\n}"
+              "raw": "{\n  \"title\": \"Water leak in bathroom - urgent\",\n  \"description\": \"Updated description\",\n  \"status\": \"in_progress\",\n  \"priority\": \"emergency\"\n}"
             }
           }
         },
+        {
+          "name": "Approve Request (pending_approval → open)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/maintenance/{{reqId}}/approve"
+          }
+        },
+        {
+          "name": "Reject Request (pending_approval → closed)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/maintenance/{{reqId}}/reject"
+          }
+        },
+        {
+          "name": "Delete Request",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/maintenance/{{reqId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Vendors",
+      "item": [
         {
           "name": "Get Vendors",
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/buildings/{{buildingId}}/vendors"
+          }
+        },
+        {
+          "name": "Create Vendor",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/vendors",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ABC Plumbing Services\",\n  \"category\": \"Plumbing\",\n  \"phone\": \"+905551234567\",\n  \"email\": \"contact@abcplumbing.com\"\n}"
+            }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('vendorId', jsonData.data.id);",
+                "}"
+              ]
+            }
+          }]
+        },
+        {
+          "name": "Update Vendor",
+          "request": {
+            "method": "PATCH",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/vendors/{{vendorId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"ABC Plumbing Services (Updated)\",\n  \"phone\": \"+905559876543\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Delete Vendor",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/buildings/{{buildingId}}/vendors/{{vendorId}}"
           }
         }
       ]
@@ -328,7 +587,15 @@
           "name": "Get Notifications",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/notifications?page=1&limit=20"
+            "url": {
+              "raw": "{{baseUrl}}/notifications?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["notifications"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
           }
         },
         {
@@ -365,7 +632,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"category\": \"maintenance\",\n  \"push_enabled\": true,\n  \"email_enabled\": false\"\n}"
+              "raw": "{\n  \"category\": \"maintenance\",\n  \"push_enabled\": true,\n  \"email_enabled\": false\n}"
             }
           }
         }
@@ -385,7 +652,16 @@
           "name": "Get Posts",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/buildings/{{buildingId}}/forum/posts?page=1&limit=20"
+            "url": {
+              "raw": "{{baseUrl}}/buildings/{{buildingId}}/forum/posts?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["buildings", "{{buildingId}}", "forum", "posts"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" },
+                { "key": "category_id", "value": "{{categoryId}}", "disabled": true }
+              ]
+            }
           }
         },
         {
@@ -398,7 +674,18 @@
               "mode": "raw",
               "raw": "{\n  \"category_id\": \"{{categoryId}}\",\n  \"title\": \"Parking spot allocation\",\n  \"body\": \"Can we discuss the new parking rules?\"\n}"
             }
-          }
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "var jsonData = pm.response.json();",
+                "if (jsonData.data) {",
+                "  pm.collectionVariables.set('postId', jsonData.data.id);",
+                "}"
+              ]
+            }
+          }]
         },
         {
           "name": "Get Post Detail",
@@ -440,7 +727,15 @@
           "name": "Get Feed",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/timeline?page=1&limit=20"
+            "url": {
+              "raw": "{{baseUrl}}/timeline?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["timeline"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
           }
         },
         {
@@ -487,6 +782,20 @@
           }
         },
         {
+          "name": "Repost",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/timeline/{{postId}}/repost"
+          }
+        },
+        {
+          "name": "Unrepost",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/timeline/{{postId}}/repost"
+          }
+        },
+        {
           "name": "Vote Poll",
           "request": {
             "method": "POST",
@@ -502,7 +811,79 @@
           "name": "Get Nearby Posts",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/timeline/nearby?lat=41.0082&lng=28.9784&radius=5"
+            "url": {
+              "raw": "{{baseUrl}}/timeline/nearby?lat=41.0082&lng=28.9784&radius=5",
+              "host": ["{{baseUrl}}"],
+              "path": ["timeline", "nearby"],
+              "query": [
+                { "key": "lat", "value": "41.0082" },
+                { "key": "lng", "value": "28.9784" },
+                { "key": "radius", "value": "5" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Social",
+      "item": [
+        {
+          "name": "Search Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/search?q=john",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "search"],
+              "query": [
+                { "key": "q", "value": "john" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Follow User",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/users/{{userId}}/follow"
+          }
+        },
+        {
+          "name": "Unfollow User",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/users/{{userId}}/follow"
+          }
+        },
+        {
+          "name": "Get Followers",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/followers?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "followers"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Following",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/users/{{userId}}/following?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{userId}}", "following"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "limit", "value": "20" }
+              ]
+            }
           }
         }
       ]

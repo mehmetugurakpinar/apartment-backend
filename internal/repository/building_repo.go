@@ -278,6 +278,15 @@ func (r *BuildingRepository) GetMemberRole(ctx context.Context, buildingID, user
 	return role, nil
 }
 
+func (r *BuildingRepository) HasManager(ctx context.Context, buildingID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM building_members WHERE building_id = $1 AND role = 'building_manager')`,
+		buildingID,
+	).Scan(&exists)
+	return exists, err
+}
+
 func (r *BuildingRepository) RemoveMember(ctx context.Context, buildingID, userID uuid.UUID) error {
 	_, err := r.pool.Exec(ctx,
 		`DELETE FROM building_members WHERE building_id = $1 AND user_id = $2`,
