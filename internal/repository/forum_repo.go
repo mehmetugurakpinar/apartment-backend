@@ -138,6 +138,9 @@ func (r *ForumRepository) GetPosts(ctx context.Context, buildingID uuid.UUID, ca
 		); err != nil {
 			return nil, 0, err
 		}
+		// Load media
+		media, _ := r.GetMedia(ctx, p.ID)
+		p.Media = media
 		posts = append(posts, p)
 	}
 	return posts, total, nil
@@ -176,6 +179,10 @@ func (r *ForumRepository) GetPostByID(ctx context.Context, postID uuid.UUID, use
 	if err == nil {
 		p.UserVote = &vote
 	}
+
+	// Get media
+	media, _ := r.GetMedia(ctx, postID)
+	p.Media = media
 
 	// Get comments
 	comments, err := r.GetComments(ctx, postID)
@@ -243,6 +250,41 @@ func (r *ForumRepository) GetComments(ctx context.Context, postID uuid.UUID) ([]
 		comments = append(comments, c)
 	}
 	return comments, nil
+}
+
+// Media
+
+func (r *ForumRepository) AddMedia(ctx context.Context, postID uuid.UUID, url, mediaType string) (*models.ForumMedia, error) {
+	m := &models.ForumMedia{}
+	err := r.pool.QueryRow(ctx,
+		`INSERT INTO forum_media (post_id, url, type) VALUES ($1, $2, $3) RETURNING id, post_id, url, type, created_at`,
+		postID, url, mediaType,
+	).Scan(&m.ID, &m.PostID, &m.URL, &m.Type, &m.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (r *ForumRepository) GetMedia(ctx context.Context, postID uuid.UUID) ([]models.ForumMedia, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, post_id, url, type, created_at FROM forum_media WHERE post_id = $1 ORDER BY created_at`,
+		postID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var media []models.ForumMedia
+	for rows.Next() {
+		var m models.ForumMedia
+		if err := rows.Scan(&m.ID, &m.PostID, &m.URL, &m.Type, &m.CreatedAt); err != nil {
+			return nil, err
+		}
+		media = append(media, m)
+	}
+	return media, nil
 }
 
 // Votes

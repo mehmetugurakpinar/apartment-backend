@@ -49,6 +49,14 @@ type ForumVote struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type ForumMedia struct {
+	ID        uuid.UUID `json:"id"`
+	PostID    uuid.UUID `json:"post_id"`
+	URL       string    `json:"url"`
+	Type      string    `json:"type"`
+	CreatedAt time.Time `json:"created_at"`
+}
+
 // Request DTOs
 
 type CreateForumPostRequest struct {
@@ -73,6 +81,7 @@ type ForumPostDetail struct {
 	AuthorName   string          `json:"author_name"`
 	AuthorAvatar *string         `json:"author_avatar,omitempty"`
 	CategoryName string          `json:"category_name"`
+	Media        []ForumMedia    `json:"media,omitempty"`
 	Comments     []CommentDetail `json:"comments,omitempty"`
 	UserVote     *int            `json:"user_vote,omitempty"`
 }

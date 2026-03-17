@@ -59,9 +59,22 @@ func main() {
 	forumRepo := repository.NewForumRepository(pgPool)
 	timelineRepo := repository.NewTimelineRepository(pgPool)
 	socialRepo := repository.NewSocialRepository(pgPool)
+	messagingRepo := repository.NewMessagingRepository(pgPool)
 
 	// Services
 	authService := services.NewAuthService(userRepo, cfg)
+
+	// Storage (MinIO) – optional; forum image uploads are disabled if MinIO is not configured
+	var storageService *services.StorageService
+	if cfg.MinIO.Endpoint != "" {
+		s, err := services.NewStorageService(cfg.MinIO)
+		if err != nil {
+			logger.Warn("MinIO storage not available, forum image uploads disabled", zap.Error(err))
+		} else {
+			storageService = s
+			logger.Info("MinIO storage connected", zap.String("endpoint", cfg.MinIO.Endpoint))
+		}
+	}
 
 	// WebSocket Hub
 	hub := ws.NewHub(logger)
@@ -73,9 +86,10 @@ func main() {
 	duesHandler := handlers.NewDuesHandler(financialRepo)
 	maintenanceHandler := handlers.NewMaintenanceHandler(maintenanceRepo, buildingRepo)
 	notifHandler := handlers.NewNotificationHandler(notifRepo)
-	forumHandler := handlers.NewForumHandler(forumRepo, buildingRepo)
+	forumHandler := handlers.NewForumHandler(forumRepo, buildingRepo, storageService)
 	timelineHandler := handlers.NewTimelineHandler(timelineRepo, userRepo, socialRepo)
 	socialHandler := handlers.NewSocialHandler(socialRepo)
+	messagingHandler := handlers.NewMessagingHandler(messagingRepo, hub)
 	_ = handlers.NewWSHandler(hub, cfg, userRepo, logger)
 
 	// Fiber app
@@ -197,6 +211,7 @@ func main() {
 	protected.Get("/users/search", socialHandler.SearchUsers)
 	protected.Post("/users/:id/follow", socialHandler.FollowUser)
 	protected.Delete("/users/:id/follow", socialHandler.UnfollowUser)
+	protected.Get("/users/:id/profile", socialHandler.GetUserProfile)
 	protected.Get("/users/:id/followers", socialHandler.GetFollowers)
 	protected.Get("/users/:id/following", socialHandler.GetFollowing)
 
@@ -207,16 +222,27 @@ func main() {
 	buildings.Get("/:id/forum/posts/:postId", forumHandler.GetPost)
 	buildings.Post("/:id/forum/posts/:postId/comments", forumHandler.CreateComment)
 	buildings.Post("/:id/forum/posts/:postId/vote", forumHandler.Vote)
+	buildings.Post("/:id/forum/posts/:postId/media", forumHandler.UploadMedia)
 
 	// Timeline
 	protected.Get("/timeline", timelineHandler.GetFeed)
 	protected.Post("/timeline", timelineHandler.CreatePost)
+	protected.Get("/timeline/:postId", timelineHandler.GetPost)
 	protected.Post("/timeline/:postId/like", timelineHandler.LikePost)
+	protected.Get("/timeline/:postId/comments", timelineHandler.GetComments)
 	protected.Post("/timeline/:postId/comments", timelineHandler.CreateComment)
 	protected.Post("/timeline/:postId/repost", timelineHandler.RepostPost)
 	protected.Delete("/timeline/:postId/repost", timelineHandler.UnrepostPost)
 	protected.Post("/timeline/polls/:pollId/vote", timelineHandler.VotePoll)
 	protected.Get("/timeline/nearby", timelineHandler.GetNearby)
+
+	// Messaging
+	messages := protected.Group("/messages")
+	messages.Get("/conversations", messagingHandler.GetConversations)
+	messages.Post("/conversations", messagingHandler.StartConversation)
+	messages.Get("/conversations/:convId/messages", messagingHandler.GetMessages)
+	messages.Post("/conversations/:convId/messages", messagingHandler.SendMessage)
+	messages.Post("/conversations/:convId/read", messagingHandler.MarkAsRead)
 
 	// WebSocket (handled with query param auth)
 	// app.Use("/ws", wsHandler.Upgrade)

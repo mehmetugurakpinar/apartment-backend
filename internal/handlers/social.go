@@ -87,6 +87,21 @@ func (h *SocialHandler) GetFollowing(c *fiber.Ctx) error {
 	return c.JSON(models.SuccessResponse(models.NewPaginatedResponse(users, pq.Page, pq.Limit, total), ""))
 }
 
+func (h *SocialHandler) GetUserProfile(c *fiber.Ctx) error {
+	targetID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Invalid user ID"))
+	}
+
+	userID := middleware.GetUserID(c)
+	profile, err := h.socialRepo.GetUserProfile(c.Context(), targetID, userID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(models.ErrorResponse("User not found"))
+	}
+
+	return c.JSON(models.SuccessResponse(profile, ""))
+}
+
 func (h *SocialHandler) SearchUsers(c *fiber.Ctx) error {
 	q := c.Query("q")
 	if q == "" {

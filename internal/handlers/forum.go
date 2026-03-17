@@ -6,18 +6,20 @@ import (
 	"apartment-backend/internal/middleware"
 	"apartment-backend/internal/models"
 	"apartment-backend/internal/repository"
+	"apartment-backend/internal/services"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 )
 
 type ForumHandler struct {
-	forumRepo    *repository.ForumRepository
-	buildingRepo *repository.BuildingRepository
+	forumRepo      *repository.ForumRepository
+	buildingRepo   *repository.BuildingRepository
+	storageService *services.StorageService
 }
 
-func NewForumHandler(forumRepo *repository.ForumRepository, buildingRepo *repository.BuildingRepository) *ForumHandler {
-	return &ForumHandler{forumRepo: forumRepo, buildingRepo: buildingRepo}
+func NewForumHandler(forumRepo *repository.ForumRepository, buildingRepo *repository.BuildingRepository, storageService *services.StorageService) *ForumHandler {
+	return &ForumHandler{forumRepo: forumRepo, buildingRepo: buildingRepo, storageService: storageService}
 }
 
 var errForbidden = fmt.Errorf("forbidden")
@@ -207,4 +209,59 @@ func (h *ForumHandler) Vote(c *fiber.Ctx) error {
 	}
 
 	return c.JSON(models.SuccessResponse(nil, "Vote recorded"))
+}
+
+func (h *ForumHandler) UploadMedia(c *fiber.Ctx) error {
+	buildingID, err := uuid.Parse(c.Params("id"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Invalid building ID"))
+	}
+	if err := h.checkBuildingAccess(c, buildingID); err != nil {
+		return nil
+	}
+
+	postID, err := uuid.Parse(c.Params("postId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Invalid post ID"))
+	}
+
+	if h.storageService == nil {
+		return c.Status(fiber.StatusServiceUnavailable).JSON(models.ErrorResponse("File storage not configured"))
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("No file provided"))
+	}
+
+	// Validate content type
+	ct := file.Header.Get("Content-Type")
+	switch ct {
+	case "image/jpeg", "image/png", "image/gif", "image/webp":
+	default:
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Only image files are allowed (jpeg, png, gif, webp)"))
+	}
+
+	// 5MB limit
+	if file.Size > 5*1024*1024 {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("File size must be under 5MB"))
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.ErrorResponse("Failed to read file"))
+	}
+	defer f.Close()
+
+	url, err := h.storageService.UploadFile(c.Context(), f, file.Size, ct, "forum")
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.ErrorResponse("Failed to upload file"))
+	}
+
+	media, err := h.forumRepo.AddMedia(c.Context(), postID, url, "image")
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.ErrorResponse(err.Error()))
+	}
+
+	return c.Status(fiber.StatusCreated).JSON(models.SuccessResponse(media, "Media uploaded"))
 }

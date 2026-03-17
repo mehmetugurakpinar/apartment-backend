@@ -18,6 +18,7 @@ const (
 	EventNewTimelinePost   EventType = "new_timeline_post"
 	EventPaymentConfirmed  EventType = "payment_confirmed"
 	EventEmergencyAlert    EventType = "emergency_alert"
+	EventNewMessage        EventType = "new_message"
 )
 
 type WSMessage struct {

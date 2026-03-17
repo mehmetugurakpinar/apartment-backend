@@ -212,6 +212,35 @@ func (h *TimelineHandler) UnrepostPost(c *fiber.Ctx) error {
 	return c.JSON(models.SuccessResponse(nil, "Unreposted"))
 }
 
+func (h *TimelineHandler) GetPost(c *fiber.Ctx) error {
+	postID, err := uuid.Parse(c.Params("postId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Invalid post ID"))
+	}
+
+	userID := middleware.GetUserID(c)
+	post, err := h.timelineRepo.GetByID(c.Context(), postID, userID)
+	if err != nil {
+		return c.Status(fiber.StatusNotFound).JSON(models.ErrorResponse("Post not found"))
+	}
+
+	return c.JSON(models.SuccessResponse(post, ""))
+}
+
+func (h *TimelineHandler) GetComments(c *fiber.Ctx) error {
+	postID, err := uuid.Parse(c.Params("postId"))
+	if err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(models.ErrorResponse("Invalid post ID"))
+	}
+
+	comments, err := h.timelineRepo.GetComments(c.Context(), postID)
+	if err != nil {
+		return c.Status(fiber.StatusInternalServerError).JSON(models.ErrorResponse(err.Error()))
+	}
+
+	return c.JSON(models.SuccessResponse(comments, ""))
+}
+
 func (h *TimelineHandler) GetNearby(c *fiber.Ctx) error {
 	lat, err := strconv.ParseFloat(c.Query("lat"), 64)
 	if err != nil {

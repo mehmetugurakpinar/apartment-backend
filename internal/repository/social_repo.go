@@ -184,6 +184,23 @@ func (r *SocialRepository) SearchUsers(ctx context.Context, q string, requesting
 	return users, nil
 }
 
+func (r *SocialRepository) GetUserProfile(ctx context.Context, targetUserID, requestingUserID uuid.UUID) (*models.UserProfileResponse, error) {
+	query := `
+		SELECT u.id, u.full_name, u.avatar_url, u.follower_count, u.following_count,
+			EXISTS(SELECT 1 FROM user_follows WHERE follower_id = $2 AND following_id = u.id) as is_following
+		FROM users u
+		WHERE u.id = $1 AND u.is_active = true`
+
+	var p models.UserProfileResponse
+	err := r.pool.QueryRow(ctx, query, targetUserID, requestingUserID).Scan(
+		&p.ID, &p.FullName, &p.AvatarURL, &p.FollowerCount, &p.FollowingCount, &p.IsFollowing,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
 func (r *SocialRepository) GetFollowedUserIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	query := `SELECT following_id FROM user_follows WHERE follower_id = $1`
 	rows, err := r.pool.Query(ctx, query, userID)
