@@ -60,6 +60,9 @@ func main() {
 	timelineRepo := repository.NewTimelineRepository(pgPool)
 	socialRepo := repository.NewSocialRepository(pgPool)
 	messagingRepo := repository.NewMessagingRepository(pgPool)
+	visitorRepo := repository.NewVisitorRepository(pgPool)
+	reservationRepo := repository.NewReservationRepository(pgPool)
+	packageRepo := repository.NewPackageRepository(pgPool)
 
 	// Services
 	authService := services.NewAuthService(userRepo, cfg)
@@ -90,7 +93,10 @@ func main() {
 	timelineHandler := handlers.NewTimelineHandler(timelineRepo, userRepo, socialRepo)
 	socialHandler := handlers.NewSocialHandler(socialRepo)
 	messagingHandler := handlers.NewMessagingHandler(messagingRepo, hub)
-	_ = handlers.NewWSHandler(hub, cfg, userRepo, logger)
+	visitorHandler := handlers.NewVisitorHandler(visitorRepo)
+	reservationHandler := handlers.NewReservationHandler(reservationRepo)
+	packageHandler := handlers.NewPackageHandler(packageRepo)
+	wsHandler := handlers.NewWSHandler(hub, cfg, userRepo, logger)
 
 	// Fiber app
 	app := fiber.New(fiber.Config{
@@ -244,9 +250,34 @@ func main() {
 	messages.Post("/conversations/:convId/messages", messagingHandler.SendMessage)
 	messages.Post("/conversations/:convId/read", messagingHandler.MarkAsRead)
 
-	// WebSocket (handled with query param auth)
-	// app.Use("/ws", wsHandler.Upgrade)
-	// app.Get("/ws", wsHandler.Handle())
+	// Visitor Management
+	buildings.Get("/:id/visitors", visitorHandler.GetPasses)
+	buildings.Post("/:id/visitors", visitorHandler.CreatePass)
+	buildings.Post("/:id/visitors/:passId/checkin", visitorHandler.CheckIn)
+	buildings.Post("/:id/visitors/:passId/checkout", visitorHandler.CheckOut)
+	buildings.Delete("/:id/visitors/:passId", visitorHandler.CancelPass)
+	buildings.Get("/:id/visitors/scan/:qr", visitorHandler.ScanQR)
+
+	// Common Areas & Reservations
+	buildings.Get("/:id/areas", reservationHandler.GetAreas)
+	buildings.Post("/:id/areas", managerOnly, reservationHandler.CreateArea)
+	buildings.Get("/:id/reservations", reservationHandler.GetReservations)
+	buildings.Post("/:id/reservations", reservationHandler.CreateReservation)
+	buildings.Post("/:id/reservations/:resId/approve", managerOnly, reservationHandler.ApproveReservation)
+	buildings.Post("/:id/reservations/:resId/reject", managerOnly, reservationHandler.RejectReservation)
+	buildings.Delete("/:id/reservations/:resId", reservationHandler.CancelReservation)
+	protected.Get("/reservations/my", reservationHandler.GetMyReservations)
+
+	// Package Tracking
+	buildings.Get("/:id/packages", packageHandler.GetPackages)
+	buildings.Post("/:id/packages", packageHandler.CreatePackage)
+	buildings.Post("/:id/packages/:pkgId/pickup", packageHandler.PickUp)
+	buildings.Post("/:id/packages/:pkgId/notify", packageHandler.Notify)
+	protected.Get("/packages/my", packageHandler.GetMyPackages)
+
+	// WebSocket
+	app.Use("/ws", wsHandler.Upgrade)
+	app.Get("/ws", wsHandler.Handle())
 
 	// Graceful shutdown
 	quit := make(chan os.Signal, 1)
